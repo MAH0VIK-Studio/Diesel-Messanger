@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diesel Ultra - Final Edition</title>
+    <style>
+        :root { --bg: #0b0e14; --sidebar: #151921; --accent: #00d2ff; --me: #005c4b; --text: #fff; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: sans-serif; height: 100vh; display: flex; overflow: hidden; }
+        
+        .sidebar { width: 320px; background: var(--sidebar); display: flex; flex-direction: column; border-right: 1px solid #222; }
+        .main { flex: 1; display: flex; flex-direction: column; position: relative; }
+        
+        /* ПРОФИЛЬ */
+        .avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #333; }
+        .settings-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 3000; display: none; align-items: center; justify-content: center; }
+        .settings-card { background: var(--sidebar); padding: 30px; border-radius: 20px; width: 300px; border: 1px solid var(--accent); }
+
+        /* ЧАТЫ */
+        .chat-item { padding: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid #222; transition: 0.2s; }
+        .chat-item:hover { background: rgba(255,255,255,0.05); }
+        .chat-item.active { background: #2a2f3b; border-left: 4px solid var(--accent); }
+        
+        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #080a0f; }
+        .bubble { max-width: 75%; padding: 10px 14px; border-radius: 15px; font-size: 14px; position: relative; }
+        .bubble.me { align-self: flex-end; background: var(--me); border-bottom-right-radius: 2px; }
+        .bubble.other { align-self: flex-start; background: #262d31; border-bottom-left-radius: 2px; }
+        .bubble img { max-width: 100%; border-radius: 10px; margin-top: 8px; border: 1px solid rgba(255,255,255,0.1); }
+
+        .input-box { padding: 15px; background: var(--sidebar); display: flex; gap: 10px; align-items: center; }
+        input, button { padding: 10px; border-radius: 8px; border: none; outline: none; }
+        input { background: #2a2f3b; color: white; flex: 1; }
+        button { background: var(--accent); cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { filter: brightness(1.2); }
+
+        #auth-screen { position: fixed; inset: 0; background: var(--bg); z-index: 4000; display: flex; align-items: center; justify-content: center; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="auth-screen">
+    <div style="text-align: center; background: var(--sidebar); padding: 40px; border-radius: 20px; border: 1px solid var(--accent);">
+        <h1 style="color: var(--accent); letter-spacing: 5px;">DIESEL</h1>
+        <input type="text" id="phone" placeholder="Телефон" style="width: 200px; margin-bottom: 10px;"><br>
+        <input type="password" id="pass" placeholder="Пароль" style="width: 200px; margin-bottom: 15px;"><br>
+        <button onclick="login()" style="width: 220px">ЗАПУСТИТЬ ДВИГАТЕЛЬ</button>
+    </div>
+</div>
+
+<div id="settings-modal" class="settings-overlay">
+    <div class="settings-card">
+        <h3>Настройки профиля</h3>
+        <label>Ваш ник:</label><br>
+        <input type="text" id="set-nick" style="width: 90%; margin: 10px 0;"><br>
+        <label>Ссылка на аватарку:</label><br>
+        <input type="text" id="set-ava" placeholder="https://..." style="width: 90%; margin: 10px 0;"><br><br>
+        <button onclick="saveProfile()" style="width: 100%;">СОХРАНИТЬ</button><br><br>
+        <button onclick="document.getElementById('settings-modal').style.display='none'" style="width: 100%; background: #444; color: white;">ЗАКРЫТЬ</button>
+    </div>
+</div>
+
+<div class="sidebar">
+    <div style="padding: 15px; background: #1c212c; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <img id="my-ava-img" src="" class="avatar" style="width: 35px; height: 35px;">
+            <div>
+                <b id="my-nick-display">...</b><br>
+                <small id="my-id-display" style="color: var(--accent); font-size: 10px;"></small>
+            </div>
+        </div>
+        <button onclick="document.getElementById('settings-modal').style.display='flex'" style="background: transparent; font-size: 18px; color: white;">⚙️</button>
+    </div>
+    
+    <div id="chat-list" style="flex: 1; overflow-y: auto;"></div>
+    
+    <div style="padding: 10px; border-top: 1px solid #222;">
+        <input type="text" id="add-id" placeholder="Введите ID..." style="width: 90%; margin-bottom: 5px;">
+        <div style="display: flex; gap: 4px;">
+            <button onclick="addFriend()" style="font-size: 11px; flex: 1;">ЛС</button>
+            <button onclick="createEntity('group')" style="font-size: 11px; flex: 1; background: #9c27b0;">ГРУППА</button>
+            <button onclick="createEntity('chan')" style="font-size: 11px; flex: 1; background: #ff9800;">КАНАЛ</button>
+        </div>
+    </div>
+</div>
+
+<div class="main">
+    <div id="chat-header" style="padding: 15px; background: var(--sidebar); display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #222;">
+        <b id="active-title">Выберите чат</b>
+    </div>
+    <div id="messages"></div>
+    <div class="input-box">
+        <label style="cursor: pointer; font-size: 20px; padding: 0 10px;">📎
+            <input type="file" id="file-input" class="hidden" onchange="sendFile(this)">
+        </label>
+        <input type="text" id="msg-input" placeholder="Напишите что-нибудь...">
+        <button onclick="sendMsg()" style="width: 50px;">➤</button>
+    </div>
+</div>
+
+<script>
+    const BASE = "https://diesel-c8b6a-default-rtdb.firebaseio.com";
+    let MY_ID = "", MY_NICK = "", MY_AVA = "", ACTIVE_CHAT = "", MY_TYPE = "";
+
+    async function login() {
+        const ph = document.getElementById('phone').value;
+        const ps = document.getElementById('pass').value;
+        if(!ph || !ps) return alert("Введите данные!");
+        MY_ID = btoa(ph).substring(0, 8);
+        
+        let res = await fetch(`${BASE}/users/${MY_ID}.json`);
+        let user = await res.json();
+        
+        if(user && user.pass !== ps) return alert("Пароль неверный!");
+        if(!user) {
+            user = { nick: "Racer_"+ph.slice(-3), pass: ps, id: MY_ID, ava: "https://api.dicebear.com/7.x/bottts/svg?seed="+MY_ID };
+            await fetch(`${BASE}/users/${MY_ID}.json`, { method:'PUT', body: JSON.stringify(user) });
+        }
+        
+        MY_NICK = user.nick;
+        MY_AVA = user.ava;
+        updateUIProfile();
+        document.getElementById('auth-screen').classList.add('hidden');
+        setInterval(sync, 2000);
+    }
+
+    function updateUIProfile() {
+        document.getElementById('my-nick-display').innerText = MY_NICK;
+        document.getElementById('my-id-display').innerText = "ID: " + MY_ID;
+        document.getElementById('my-ava-img').src = MY_AVA;
+        document.getElementById('set-nick').value = MY_NICK;
+        document.getElementById('set-ava').value = MY_AVA;
+    }
+
+    async function saveProfile() {
+        const newNick = document.getElementById('set-nick').value;
+        const newAva = document.getElementById('set-ava').value;
+        await fetch(`${BASE}/users/${MY_ID}.json`, { 
+            method:'PATCH', 
+            body: JSON.stringify({ nick: newNick, ava: newAva }) 
+        });
+        MY_NICK = newNick; MY_AVA = newAva;
+        updateUIProfile();
+        document.getElementById('settings-modal').style.display = 'none';
+    }
+
+    async function addFriend() {
+        const tid = document.getElementById('add-id').value;
+        if(!tid || tid === MY_ID) return;
+        await fetch(`${BASE}/contacts/${MY_ID}/${tid}.json`, { method:'PUT', body: JSON.stringify({name: tid, type: 'user'}) });
+        await fetch(`${BASE}/contacts/${tid}/${MY_ID}.json`, { method:'PUT', body: JSON.stringify({name: MY_ID, type: 'user'}) });
+        document.getElementById('add-id').value = "";
+    }
+
+    async function createEntity(type) {
+        const name = prompt("Введите имя:");
+        if(!name) return;
+        const id = type + "_" + Math.random().toString(36).substr(2, 6);
+        await fetch(`${BASE}/entities/${id}.json`, { method:'PUT', body: JSON.stringify({owner: MY_ID, name: name, type: type}) });
+        await fetch(`${BASE}/contacts/${MY_ID}/${id}.json`, { method:'PUT', body: JSON.stringify({name: name, type: type}) });
+    }
+
+    async function sendMsg(fileData = null) {
+        const txt = document.getElementById('msg-input').value;
+        if(!txt && !fileData || !ACTIVE_CHAT) return;
+        const msg = { sid: MY_ID, sender: MY_NICK, ava: MY_AVA, text: txt, file: fileData, ts: Date.now() };
+        let room = (MY_TYPE === 'user') ? [MY_ID, ACTIVE_CHAT].sort().join("_") : ACTIVE_CHAT;
+        await fetch(`${BASE}/chats/${room}.json`, { method:'POST', body: JSON.stringify(msg) });
+        document.getElementById('msg-input').value = "";
+    }
+
+    function sendFile(input) {
+        const file = input.files[0];
+        if(file.size > 700000) return alert("Файл слишком тяжелый!");
+        const reader = new FileReader();
+        reader.onload = (e) => sendMsg(e.target.result);
+        reader.readAsDataURL(file);
+    }
+
+    async function sync() {
+        // Синхрон контактов
+        let cRes = await fetch(`${BASE}/contacts/${MY_ID}.json`);
+        let cData = await cRes.json();
+        const list = document.getElementById('chat-list');
+        if(cData) {
+            list.innerHTML = "";
+            for(let id in cData) {
+                let div = document.createElement('div');
+                div.className = `chat-item ${ACTIVE_CHAT === id ? 'active' : ''}`;
+                // Пытаемся достать актуальное фото юзера из базы
+                let uInfo = await (await fetch(`${BASE}/users/${id}.json`)).json();
+                let img = uInfo ? uInfo.ava : "https://api.dicebear.com/7.x/initials/svg?seed="+id;
+                div.innerHTML = `<img src="${img}" class="avatar"> <div><b>${uInfo ? uInfo.nick : cData[id].name}</b><br><small style="color:gray; font-size:9px">${id}</small></div>`;
+                div.onclick = () => { 
+                    ACTIVE_CHAT = id; MY_TYPE = cData[id].type;
+                    document.getElementById('active-title').innerText = cData[id].name;
+                };
+                list.appendChild(div);
+            }
+        }
+
+        // Синхрон сообщений
+        if(!ACTIVE_CHAT) return;
+        let room = (MY_TYPE === 'user') ? [MY_ID, ACTIVE_CHAT].sort().join("_") : ACTIVE_CHAT;
+        let mRes = await fetch(`${BASE}/chats/${room}.json`);
+        let mData = await mRes.json();
+        const box = document.getElementById('messages');
+        if(mData && Object.keys(mData).length > box.children.length) {
+            box.innerHTML = "";
+            Object.values(mData).forEach(m => {
+                let b = document.createElement('div');
+                b.className = `bubble ${m.sid === MY_ID ? 'me' : 'other'}`;
+                let content = m.text || "";
+                if(m.file) content += `<img src="${m.file}">`;
+                b.innerHTML = `<div style="display:flex; gap:8px; align-items:center; margin-bottom:5px">
+                               <img src="${m.ava || ''}" style="width:18px;height:18px;border-radius:50%">
+                               <small style="color:var(--accent);font-weight:bold">${m.sender}</small></div>${content}`;
+                box.appendChild(b);
+            });
+            box.scrollTop = box.scrollHeight;
+        }
+    }
+</script>
+</body>
+</html>
