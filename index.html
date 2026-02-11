@@ -3,223 +3,232 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diesel Ultra - Final Edition</title>
+    <title>Diesel Ultra - Mobile Edition</title>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
-        :root { --bg: #0b0e14; --sidebar: #151921; --accent: #00d2ff; --me: #005c4b; --text: #fff; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: sans-serif; height: 100vh; display: flex; overflow: hidden; }
-        
-        .sidebar { width: 320px; background: var(--sidebar); display: flex; flex-direction: column; border-right: 1px solid #222; }
-        .main { flex: 1; display: flex; flex-direction: column; position: relative; }
-        
-        /* ПРОФИЛЬ */
-        .avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #333; }
-        .settings-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 3000; display: none; align-items: center; justify-content: center; }
-        .settings-card { background: var(--sidebar); padding: 30px; border-radius: 20px; width: 300px; border: 1px solid var(--accent); }
-
-        /* ЧАТЫ */
-        .chat-item { padding: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid #222; transition: 0.2s; }
-        .chat-item:hover { background: rgba(255,255,255,0.05); }
-        .chat-item.active { background: #2a2f3b; border-left: 4px solid var(--accent); }
-        
-        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #080a0f; }
-        .bubble { max-width: 75%; padding: 10px 14px; border-radius: 15px; font-size: 14px; position: relative; }
+        :root { --bg: #0b0e14; --sidebar: #151921; --accent: #00d2ff; --me: #005c4b; --text: #fff; --system: #2a2f3b; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; overflow: hidden; }
+        .sidebar { width: 320px; background: var(--sidebar); display: flex; flex-direction: column; border-right: 1px solid #222; transition: 0.3s; z-index: 10; }
+        .main { flex: 1; display: flex; flex-direction: column; position: relative; background: #080a0f; }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #333; flex-shrink: 0; }
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .card { background: var(--sidebar); padding: 20px; border-radius: 20px; width: 300px; border: 1px solid var(--accent); }
+        #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .bubble { max-width: 85%; padding: 10px; border-radius: 15px; font-size: 14px; position: relative; }
         .bubble.me { align-self: flex-end; background: var(--me); border-bottom-right-radius: 2px; }
         .bubble.other { align-self: flex-start; background: #262d31; border-bottom-left-radius: 2px; }
-        .bubble img { max-width: 100%; border-radius: 10px; margin-top: 8px; border: 1px solid rgba(255,255,255,0.1); }
-
-        .input-box { padding: 15px; background: var(--sidebar); display: flex; gap: 10px; align-items: center; }
-        input, button { padding: 10px; border-radius: 8px; border: none; outline: none; }
-        input { background: #2a2f3b; color: white; flex: 1; }
-        button { background: var(--accent); cursor: pointer; font-weight: bold; transition: 0.3s; }
-        button:hover { filter: brightness(1.2); }
-
-        #auth-screen { position: fixed; inset: 0; background: var(--bg); z-index: 4000; display: flex; align-items: center; justify-content: center; }
-        .hidden { display: none !important; }
+        .chat-item { padding: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid #222; }
+        .chat-item.active { background: #2a2f3b; border-left: 4px solid var(--accent); }
+        .comm-btn { font-size: 11px; color: var(--accent); cursor: pointer; margin-top: 5px; display: inline-block; }
+        .comment { font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 5px; margin-top: 3px; border-left: 2px solid var(--accent); }
+        input { background: var(--system); color: white; border: none; padding: 12px; border-radius: 8px; flex: 1; outline: none; margin: 5px 0; width: -webkit-fill-available; }
+        button { background: var(--accent); border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #000; }
+        @media (max-width: 768px) {
+            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform: translateX(0); }
+            .sidebar.hidden { transform: translateX(-100%); }
+            .main { width: 100%; }
+        }
     </style>
 </head>
 <body>
 
-<div id="auth-screen">
-    <div style="text-align: center; background: var(--sidebar); padding: 40px; border-radius: 20px; border: 1px solid var(--accent);">
+<div id="auth-screen" style="position:fixed; inset:0; background:var(--bg); z-index:9999; display:flex; align-items:center; justify-content:center;">
+    <div class="card" style="text-align: center;">
         <h1 style="color: var(--accent); letter-spacing: 5px;">DIESEL</h1>
-        <input type="text" id="phone" placeholder="Телефон" style="width: 200px; margin-bottom: 10px;"><br>
-        <input type="password" id="pass" placeholder="Пароль" style="width: 200px; margin-bottom: 15px;"><br>
-        <button onclick="login()" style="width: 220px">ЗАПУСТИТЬ ДВИГАТЕЛЬ</button>
-    </div>
-</div>
-
-<div id="settings-modal" class="settings-overlay">
-    <div class="settings-card">
-        <h3>Настройки профиля</h3>
-        <label>Ваш ник:</label><br>
-        <input type="text" id="set-nick" style="width: 90%; margin: 10px 0;"><br>
-        <label>Ссылка на аватарку:</label><br>
-        <input type="text" id="set-ava" placeholder="https://..." style="width: 90%; margin: 10px 0;"><br><br>
-        <button onclick="saveProfile()" style="width: 100%;">СОХРАНИТЬ</button><br><br>
-        <button onclick="document.getElementById('settings-modal').style.display='none'" style="width: 100%; background: #444; color: white;">ЗАКРЫТЬ</button>
-    </div>
-</div>
-
-<div class="sidebar">
-    <div style="padding: 15px; background: #1c212c; display: flex; align-items: center; justify-content: space-between;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <img id="my-ava-img" src="" class="avatar" style="width: 35px; height: 35px;">
-            <div>
-                <b id="my-nick-display">...</b><br>
-                <small id="my-id-display" style="color: var(--accent); font-size: 10px;"></small>
-            </div>
+        <div id="step-email">
+            <input type="email" id="email" placeholder="Email"><br>
+            <button onclick="sendEmailCode()" style="width: 100%">ВОЙТИ</button>
         </div>
-        <button onclick="document.getElementById('settings-modal').style.display='flex'" style="background: transparent; font-size: 18px; color: white;">⚙️</button>
+        <div id="step-code" style="display:none">
+            <input type="text" id="auth-code" placeholder="Код 0000" style="text-align:center;"><br>
+            <button onclick="verifyCode()" style="width: 100%">ПОДТВЕРДИТЬ</button>
+        </div>
     </div>
-    
+</div>
+
+<div id="profile-modal" class="overlay">
+    <div class="card">
+        <h3>Мой Профиль</h3>
+        <p style="font-size: 11px; color: var(--accent)">ID: <span id="display-id"></span></p>
+        <input type="text" id="edit-nick" placeholder="Никнейм">
+        <input type="text" id="edit-ava" placeholder="URL аватарки">
+        <button onclick="saveProfile()" style="width:100%">СОХРАНИТЬ</button>
+        <button onclick="closeModals()" style="width:100%; margin-top:10px; background:#444; color:white">ЗАКРЫТЬ</button>
+    </div>
+</div>
+
+<div class="sidebar" id="sidebar">
+    <div style="padding: 15px; background: #1c212c; display: flex; align-items: center; gap: 10px; cursor: pointer;" onclick="openProfile()">
+        <img id="my-ava-img" src="" class="avatar" style="width: 35px; height: 35px;">
+        <b id="my-nick-display">...</b>
+    </div>
     <div id="chat-list" style="flex: 1; overflow-y: auto;"></div>
-    
     <div style="padding: 10px; border-top: 1px solid #222;">
-        <input type="text" id="add-id" placeholder="Введите ID..." style="width: 90%; margin-bottom: 5px;">
-        <div style="display: flex; gap: 4px;">
-            <button onclick="addFriend()" style="font-size: 11px; flex: 1;">ЛС</button>
-            <button onclick="createEntity('group')" style="font-size: 11px; flex: 1; background: #9c27b0;">ГРУППА</button>
-            <button onclick="createEntity('chan')" style="font-size: 11px; flex: 1; background: #ff9800;">КАНАЛ</button>
-        </div>
+        <button onclick="createChannelPrompt()" style="width: 100%; margin-bottom: 8px; background:#222; color:var(--accent)">+ КАНАЛ</button>
+        <input type="text" id="add-id" placeholder="ID друга/канала...">
+        <button onclick="addFriend()" style="width: 100%">ДОБАВИТЬ</button>
     </div>
 </div>
 
 <div class="main">
-    <div id="chat-header" style="padding: 15px; background: var(--sidebar); display: flex; align-items: center; gap: 15px; border-bottom: 1px solid #222;">
-        <b id="active-title">Выберите чат</b>
+    <div id="chat-header" style="padding: 15px; background: var(--sidebar); border-bottom: 1px solid #222; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:10px">
+            <button onclick="toggleSidebar()" id="back-btn" style="display:none; padding:5px 10px">←</button>
+            <div style="display:flex; flex-direction:column">
+                <b id="active-title">Выберите чат</b>
+                <small id="active-info" style="font-size:10px; color:var(--accent)"></small>
+            </div>
+        </div>
+        <button id="chan-settings-btn" style="display:none" onclick="editChannelPrompt()">⚙️</button>
     </div>
     <div id="messages"></div>
-    <div class="input-box">
-        <label style="cursor: pointer; font-size: 20px; padding: 0 10px;">📎
-            <input type="file" id="file-input" class="hidden" onchange="sendFile(this)">
-        </label>
-        <input type="text" id="msg-input" placeholder="Напишите что-нибудь...">
-        <button onclick="sendMsg()" style="width: 50px;">➤</button>
+    <div id="input-area" style="padding: 15px; background: var(--sidebar); display: flex; gap: 10px;">
+        <input type="text" id="msg-input" placeholder="Сообщение...">
+        <button onclick="sendMsg()">➤</button>
     </div>
 </div>
 
 <script>
     const BASE = "https://diesel-c8b6a-default-rtdb.firebaseio.com";
-    let MY_ID = "", MY_NICK = "", MY_AVA = "", ACTIVE_CHAT = "", MY_TYPE = "";
+    const DEF_AVA = "https://basket-25.wbbasket.ru/vol4382/part438234/438234188/images/big/1.webp";
+    const EJS_SERVICE = "service_tdsibs5", EJS_TEMPLATE = "template_c2m28lg", EJS_PUBLIC = "L0fjG_jIAPW3x015-";
 
-    async function login() {
-        const ph = document.getElementById('phone').value;
-        const ps = document.getElementById('pass').value;
-        if(!ph || !ps) return alert("Введите данные!");
-        MY_ID = btoa(ph).substring(0, 8);
-        
-        let res = await fetch(`${BASE}/users/${MY_ID}.json`);
-        let user = await res.json();
-        
-        if(user && user.pass !== ps) return alert("Пароль неверный!");
-        if(!user) {
-            user = { nick: "Racer_"+ph.slice(-3), pass: ps, id: MY_ID, ava: "https://api.dicebear.com/7.x/bottts/svg?seed="+MY_ID };
-            await fetch(`${BASE}/users/${MY_ID}.json`, { method:'PUT', body: JSON.stringify(user) });
-        }
-        
-        MY_NICK = user.nick;
-        MY_AVA = user.ava;
-        updateUIProfile();
-        document.getElementById('auth-screen').classList.add('hidden');
-        setInterval(sync, 2000);
-    }
+    let MY_ID = "", MY_NICK = "", MY_AVA = "", ACTIVE_CHAT = "", MY_TYPE = "", OWNER = "";
+    let lastChatHash = "", lastMsgHash = "";
 
-    function updateUIProfile() {
-        document.getElementById('my-nick-display').innerText = MY_NICK;
-        document.getElementById('my-id-display').innerText = "ID: " + MY_ID;
-        document.getElementById('my-ava-img').src = MY_AVA;
-        document.getElementById('set-nick').value = MY_NICK;
-        document.getElementById('set-ava').value = MY_AVA;
+    emailjs.init(EJS_PUBLIC);
+
+    function toggleSidebar() { document.getElementById('sidebar').classList.toggle('hidden'); }
+
+    function openProfile() {
+        document.getElementById('display-id').innerText = MY_ID;
+        document.getElementById('edit-nick').value = MY_NICK;
+        document.getElementById('edit-ava').value = MY_AVA;
+        document.getElementById('profile-modal').style.display = 'flex';
     }
 
     async function saveProfile() {
-        const newNick = document.getElementById('set-nick').value;
-        const newAva = document.getElementById('set-ava').value;
-        await fetch(`${BASE}/users/${MY_ID}.json`, { 
-            method:'PATCH', 
-            body: JSON.stringify({ nick: newNick, ava: newAva }) 
-        });
-        MY_NICK = newNick; MY_AVA = newAva;
-        updateUIProfile();
-        document.getElementById('settings-modal').style.display = 'none';
+        MY_NICK = document.getElementById('edit-nick').value;
+        MY_AVA = document.getElementById('edit-ava').value || DEF_AVA;
+        await fetch(`${BASE}/users/${MY_ID}.json`, { method:'PATCH', body: JSON.stringify({ nick: MY_NICK, ava: MY_AVA }) });
+        updateUI(); closeModals();
+    }
+
+    async function createChannelPrompt() {
+        const name = prompt("Название канала:");
+        if(!name) return;
+        const cid = "chan_" + Math.random().toString(36).substr(2, 6);
+        await fetch(`${BASE}/entities/${cid}.json`, { method:'PUT', body: JSON.stringify({ name, ava: DEF_AVA, owner: MY_ID, type: 'channel', subs: 1 }) });
+        await fetch(`${BASE}/contacts/${MY_ID}/${cid}.json`, { method:'PUT', body: JSON.stringify({ type: 'channel' }) });
     }
 
     async function addFriend() {
-        const tid = document.getElementById('add-id').value;
-        if(!tid || tid === MY_ID) return;
-        await fetch(`${BASE}/contacts/${MY_ID}/${tid}.json`, { method:'PUT', body: JSON.stringify({name: tid, type: 'user'}) });
-        await fetch(`${BASE}/contacts/${tid}/${MY_ID}.json`, { method:'PUT', body: JSON.stringify({name: MY_ID, type: 'user'}) });
+        const id = document.getElementById('add-id').value.trim();
+        if(!id) return;
+        let type = id.startsWith('chan_') ? 'channel' : 'user';
+        await fetch(`${BASE}/contacts/${MY_ID}/${id}.json`, { method:'PUT', body: JSON.stringify({ type }) });
+        if(type === 'channel') fetch(`${BASE}/entities/${id}/subs.json`).then(r => r.json()).then(s => fetch(`${BASE}/entities/${id}.json`, {method:'PATCH', body: JSON.stringify({subs: (s||0)+1})}));
         document.getElementById('add-id').value = "";
     }
 
-    async function createEntity(type) {
-        const name = prompt("Введите имя:");
-        if(!name) return;
-        const id = type + "_" + Math.random().toString(36).substr(2, 6);
-        await fetch(`${BASE}/entities/${id}.json`, { method:'PUT', body: JSON.stringify({owner: MY_ID, name: name, type: type}) });
-        await fetch(`${BASE}/contacts/${MY_ID}/${id}.json`, { method:'PUT', body: JSON.stringify({name: name, type: type}) });
-    }
-
-    async function sendMsg(fileData = null) {
+    async function sendMsg() {
         const txt = document.getElementById('msg-input').value;
-        if(!txt && !fileData || !ACTIVE_CHAT) return;
-        const msg = { sid: MY_ID, sender: MY_NICK, ava: MY_AVA, text: txt, file: fileData, ts: Date.now() };
+        if(!txt || !ACTIVE_CHAT) return;
+        const msg = { sid: MY_ID, sender: MY_NICK, ava: MY_AVA, text: txt, ts: Date.now() };
         let room = (MY_TYPE === 'user') ? [MY_ID, ACTIVE_CHAT].sort().join("_") : ACTIVE_CHAT;
         await fetch(`${BASE}/chats/${room}.json`, { method:'POST', body: JSON.stringify(msg) });
+        if(MY_TYPE === 'user') {
+            let u = await (await fetch(`${BASE}/users/${ACTIVE_CHAT}.json`)).json();
+            if(u?.email) emailjs.send(EJS_SERVICE, EJS_TEMPLATE, { name: MY_NICK, message: txt, to_email: u.email });
+        }
         document.getElementById('msg-input').value = "";
     }
 
-    function sendFile(input) {
-        const file = input.files[0];
-        if(file.size > 700000) return alert("Файл слишком тяжелый!");
-        const reader = new FileReader();
-        reader.onload = (e) => sendMsg(e.target.result);
-        reader.readAsDataURL(file);
+    async function addComment(mid) {
+        const t = prompt("Ваш комментарий:");
+        if(!t) return;
+        let room = (MY_TYPE === 'user') ? [MY_ID, ACTIVE_CHAT].sort().join("_") : ACTIVE_CHAT;
+        await fetch(`${BASE}/chats/${room}/${mid}/comments.json`, { method:'POST', body: JSON.stringify({ u: MY_NICK, t }) });
+        lastMsgHash = ""; sync();
+    }
+
+    async function sendEmailCode() {
+        const mail = document.getElementById('email').value;
+        if(!mail.includes('@')) return alert("Email!");
+        MY_ID = btoa(mail).substring(0, 8);
+        const code = Math.floor(1000 + Math.random() * 9000).toString();
+        await fetch(`${BASE}/auth_temp/${MY_ID}.json`, { method:'PUT', body: JSON.stringify({ code, email: mail }) });
+        emailjs.send(EJS_SERVICE, EJS_TEMPLATE, { name: "DIESEL", message: `Код: ${code}`, to_email: mail }).then(() => {
+            document.getElementById('step-email').style.display = 'none';
+            document.getElementById('step-code').style.display = 'block';
+        });
+    }
+
+    async function verifyCode() {
+        const code = document.getElementById('auth-code').value;
+        let data = await (await fetch(`${BASE}/auth_temp/${MY_ID}.json`)).json();
+        if(data && data.code === code) {
+            let user = await (await fetch(`${BASE}/users/${MY_ID}.json`)).json();
+            if(!user) {
+                user = { nick: "User_"+MY_ID, id: MY_ID, ava: DEF_AVA, email: data.email };
+                await fetch(`${BASE}/users/${MY_ID}.json`, { method:'PUT', body: JSON.stringify(user) });
+            }
+            MY_NICK = user.nick; MY_AVA = user.ava || DEF_AVA;
+            document.getElementById('auth-screen').style.display = 'none';
+            updateUI(); setInterval(sync, 2000);
+        }
+    }
+
+    function updateUI() {
+        document.getElementById('my-nick-display').innerText = MY_NICK;
+        document.getElementById('my-ava-img').src = MY_AVA;
     }
 
     async function sync() {
-        // Синхрон контактов
-        let cRes = await fetch(`${BASE}/contacts/${MY_ID}.json`);
-        let cData = await cRes.json();
-        const list = document.getElementById('chat-list');
-        if(cData) {
+        if(!MY_ID) return;
+        let cData = await (await fetch(`${BASE}/contacts/${MY_ID}.json`)).json();
+        if(JSON.stringify(cData) !== lastChatHash) {
+            lastChatHash = JSON.stringify(cData);
+            const list = document.getElementById('chat-list');
             list.innerHTML = "";
             for(let id in cData) {
+                let info = (id.startsWith('chan_')) ? await (await fetch(`${BASE}/entities/${id}.json`)).json() : await (await fetch(`${BASE}/users/${id}.json`)).json();
                 let div = document.createElement('div');
                 div.className = `chat-item ${ACTIVE_CHAT === id ? 'active' : ''}`;
-                // Пытаемся достать актуальное фото юзера из базы
-                let uInfo = await (await fetch(`${BASE}/users/${id}.json`)).json();
-                let img = uInfo ? uInfo.ava : "https://api.dicebear.com/7.x/initials/svg?seed="+id;
-                div.innerHTML = `<img src="${img}" class="avatar"> <div><b>${uInfo ? uInfo.nick : cData[id].name}</b><br><small style="color:gray; font-size:9px">${id}</small></div>`;
+                div.innerHTML = `<img src="${info?.ava || DEF_AVA}" class="avatar"> <b>${info?.name || info?.nick || id}</b>`;
                 div.onclick = () => { 
-                    ACTIVE_CHAT = id; MY_TYPE = cData[id].type;
-                    document.getElementById('active-title').innerText = cData[id].name;
+                    ACTIVE_CHAT = id; MY_TYPE = cData[id].type; OWNER = info?.owner || "";
+                    document.getElementById('active-title').innerText = info?.name || info?.nick;
+                    document.getElementById('active-info').innerText = id.startsWith('chan_') ? `ID: ${id} | Подписчиков: ${info?.subs || 0}` : "";
+                    document.getElementById('chan-settings-btn').style.display = (OWNER === MY_ID) ? "block" : "none";
+                    document.getElementById('input-area').style.display = (MY_TYPE === 'channel' && OWNER !== MY_ID) ? "none" : "flex";
+                    if(window.innerWidth < 768) toggleSidebar();
+                    document.getElementById('back-btn').style.display = window.innerWidth < 768 ? "block" : "none";
+                    lastMsgHash = ""; sync();
                 };
                 list.appendChild(div);
             }
         }
-
-        // Синхрон сообщений
-        if(!ACTIVE_CHAT) return;
-        let room = (MY_TYPE === 'user') ? [MY_ID, ACTIVE_CHAT].sort().join("_") : ACTIVE_CHAT;
-        let mRes = await fetch(`${BASE}/chats/${room}.json`);
-        let mData = await mRes.json();
-        const box = document.getElementById('messages');
-        if(mData && Object.keys(mData).length > box.children.length) {
-            box.innerHTML = "";
-            Object.values(mData).forEach(m => {
-                let b = document.createElement('div');
-                b.className = `bubble ${m.sid === MY_ID ? 'me' : 'other'}`;
-                let content = m.text || "";
-                if(m.file) content += `<img src="${m.file}">`;
-                b.innerHTML = `<div style="display:flex; gap:8px; align-items:center; margin-bottom:5px">
-                               <img src="${m.ava || ''}" style="width:18px;height:18px;border-radius:50%">
-                               <small style="color:var(--accent);font-weight:bold">${m.sender}</small></div>${content}`;
-                box.appendChild(b);
-            });
-            box.scrollTop = box.scrollHeight;
+        if(ACTIVE_CHAT) {
+            let room = (MY_TYPE === 'user') ? [MY_ID, ACTIVE_CHAT].sort().join("_") : ACTIVE_CHAT;
+            let mData = await (await fetch(`${BASE}/chats/${room}.json`)).json();
+            if(JSON.stringify(mData) !== lastMsgHash) {
+                lastMsgHash = JSON.stringify(mData);
+                const box = document.getElementById('messages'); box.innerHTML = "";
+                if(mData) {
+                    Object.keys(mData).forEach(mid => {
+                        let m = mData[mid], b = document.createElement('div');
+                        b.className = `bubble ${m.sid === MY_ID ? 'me' : 'other'}`;
+                        let comms = m.comments ? Object.values(m.comments).map(c => `<div class="comment"><b>${c.u}:</b> ${c.t}</div>`).join('') : "";
+                        b.innerHTML = `<small style="color:var(--accent)">${m.sender}</small><div>${m.text}</div>${comms}<span class="comm-btn" onclick="addComment('${mid}')">Обсудить</span>`;
+                        box.appendChild(b);
+                    });
+                    box.scrollTop = box.scrollHeight;
+                }
+            }
         }
     }
+    function closeModals() { document.querySelectorAll('.overlay').forEach(m => m.style.display = 'none'); }
 </script>
 </body>
 </html>
