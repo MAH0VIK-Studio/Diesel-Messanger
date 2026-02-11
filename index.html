@@ -8,6 +8,31 @@
     <style>
         :root { --bg: #0b0e14; --sidebar: #151921; --accent: #00d2ff; --me: #005c4b; --text: #fff; --system: #2a2f3b; }
         body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; overflow: hidden; }
+        
+        /* Aero Style Classes */
+        body.aero-mode { background: url('Фон.png') no-repeat center center fixed; background-size: cover; }
+        /* Фон сделан светлее (0.3 вместо 0.5) */
+        body.aero-mode .sidebar, body.aero-mode .main, body.aero-mode #auth-screen { background: rgba(0, 0, 0, 0.3) !important; backdrop-filter: blur(10px); }
+        body.aero-mode input { background: url('Button3.png') no-repeat; background-size: 100% 100%; border: none; color: white; }
+        /* Глянцевый эффект для кнопок через наложение градиента */
+        body.aero-mode button { 
+            background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%), url('Button3.png') no-repeat; 
+            background-size: 100% 100%; 
+            color: white; 
+            border: none; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        /* Увеличенная кнопка отправить */
+        body.aero-mode #send-btn { 
+            background: url('Button1.png') no-repeat; 
+            background-size: contain; 
+            background-position: center; 
+            color: transparent; 
+            width: 70px; 
+            height: 50px;
+        }
+        body.aero-mode #logo-img { content: url('ico.png'); width: 80px; height: auto; }
+
         .sidebar { width: 320px; background: var(--sidebar); display: flex; flex-direction: column; border-right: 1px solid #222; transition: 0.3s; z-index: 10; }
         .main { flex: 1; display: flex; flex-direction: column; position: relative; background: #080a0f; }
         .avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #333; flex-shrink: 0; }
@@ -34,7 +59,7 @@
 
 <div id="auth-screen" style="position:fixed; inset:0; background:var(--bg); z-index:9999; display:flex; align-items:center; justify-content:center;">
     <div class="card" style="text-align: center;">
-        <h1 style="color: var(--accent); letter-spacing: 5px;">DIESEL</h1>
+        <h1 id="logo-img" style="color: var(--accent); letter-spacing: 5px;">DIESEL</h1>
         <div id="step-email">
             <input type="email" id="email" placeholder="Email"><br>
             <button onclick="sendEmailCode()" style="width: 100%">ВОЙТИ</button>
@@ -53,6 +78,7 @@
         <input type="text" id="edit-nick" placeholder="Никнейм">
         <input type="text" id="edit-ava" placeholder="URL аватарки">
         <button onclick="saveProfile()" style="width:100%">СОХРАНИТЬ</button>
+        <button onclick="toggleAero()" style="width:100%; margin-top:10px; background: linear-gradient(45deg, #00d2ff, #3a7bd5); color:white">Aero Style</button>
         <button onclick="closeModals()" style="width:100%; margin-top:10px; background:#444; color:white">ЗАКРЫТЬ</button>
     </div>
 </div>
@@ -82,9 +108,9 @@
         <button id="chan-settings-btn" style="display:none" onclick="editChannelPrompt()">⚙️</button>
     </div>
     <div id="messages"></div>
-    <div id="input-area" style="padding: 15px; background: var(--sidebar); display: flex; gap: 10px;">
+    <div id="input-area" style="padding: 15px; background: var(--sidebar); display: flex; gap: 10px; align-items: center;">
         <input type="text" id="msg-input" placeholder="Сообщение...">
-        <button onclick="sendMsg()">➤</button>
+        <button id="send-btn" onclick="sendMsg()">➤</button>
     </div>
 </div>
 
@@ -97,6 +123,12 @@
     let lastChatHash = "", lastMsgHash = "";
 
     emailjs.init(EJS_PUBLIC);
+
+    function toggleAero() {
+        document.body.classList.toggle('aero-mode');
+        localStorage.setItem('aero', document.body.classList.contains('aero-mode'));
+    }
+    if(localStorage.getItem('aero') === 'true') document.body.classList.add('aero-mode');
 
     function toggleSidebar() { document.getElementById('sidebar').classList.toggle('hidden'); }
 
