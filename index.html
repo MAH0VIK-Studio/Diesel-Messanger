@@ -36,7 +36,8 @@
         .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
         .card { background: var(--sidebar); padding: 20px; border-radius: 20px; width: 300px; border: 1px solid var(--accent); }
         #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
-        .bubble { max-width: 85%; padding: 10px; border-radius: 15px; font-size: 14px; position: relative; }
+        .bubble { max-width: 85%; padding: 10px; border-radius: 15px; font-size: 14px; position: relative; word-wrap: break-word; }
+        .bubble img, .bubble video { max-width: 100%; border-radius: 10px; margin-top: 5px; display: block; }
         .bubble.me { align-self: flex-end; background: var(--me); border-bottom-right-radius: 2px; }
         .bubble.other { align-self: flex-start; background: #262d31; border-bottom-left-radius: 2px; }
         .chat-item { padding: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid #222; }
@@ -45,6 +46,7 @@
         .comment { font-size: 12px; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 5px; margin-top: 3px; border-left: 2px solid var(--accent); }
         input { background: var(--system); color: white; border: none; padding: 12px; border-radius: 8px; flex: 1; outline: none; margin: 5px 0; width: -webkit-fill-available; }
         button { background: var(--accent); border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #000; }
+        .attach-btn { background: none; color: var(--accent); font-size: 20px; padding: 5px; }
         @media (max-width: 768px) {
             .sidebar { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform: translateX(0); }
             .sidebar.hidden { transform: translateX(-100%); }
@@ -106,6 +108,8 @@
     </div>
     <div id="messages"></div>
     <div id="input-area" style="padding: 15px; background: var(--sidebar); display: flex; gap: 10px; align-items: center;">
+        <button class="attach-btn" onclick="document.getElementById('file-input').click()">📎</button>
+        <input type="file" id="file-input" style="display:none" onchange="uploadFile(this)">
         <input type="text" id="msg-input" placeholder="Сообщение...">
         <button id="send-btn" onclick="sendMsg()">➤</button>
     </div>
@@ -115,13 +119,15 @@
     const BASE = "https://diesel-c8b6a-default-rtdb.firebaseio.com";
     const DEF_AVA = "https://basket-25.wbbasket.ru/vol4382/part438234/438234188/images/big/1.webp";
     const EJS_SERVICE = "service_tdsibs5", EJS_TEMPLATE = "template_c2m28lg", EJS_PUBLIC = "L0fjG_jIAPW3x015-";
+    
+    // ТВОЙ СЕРВЕР ИЗ PINGGY
+    const MY_SERVER = "https://ckrnv-77-35-254-45.a.free.pinggy.link";
 
     let MY_ID = "", MY_NICK = "", MY_AVA = "", ACTIVE_CHAT = "", MY_TYPE = "", OWNER = "";
     let lastChatHash = "", lastMsgHash = "";
 
     emailjs.init(EJS_PUBLIC);
 
-    // Авто-вход при загрузке
     async function checkAuth() {
         const savedId = localStorage.getItem('my_diesel_id');
         if (savedId) {
@@ -137,6 +143,25 @@
         }
     }
     checkAuth();
+
+    // Функция загрузки файла на твой ноут
+    async function uploadFile(input) {
+        if (!input.files[0] || !ACTIVE_CHAT) return;
+        const file = input.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch(`${MY_SERVER}/upload`, { method: 'POST', body: formData });
+            if (res.ok) {
+                const fileUrl = `${MY_SERVER}/uploads/${file.name}`;
+                // Отправляем сообщение с типом контента
+                const type = file.type.startsWith('image/') ? 'img' : (file.type.startsWith('video/') ? 'vid' : 'file');
+                sendMsg(`[${type}]${fileUrl}`);
+            } else { alert("Ошибка сервера!"); }
+        } catch (e) { alert("Сервер недоступен! Проверь Pinggy и Python."); }
+        input.value = "";
+    }
 
     function toggleAero() {
         document.body.classList.toggle('aero-mode');
@@ -177,13 +202,13 @@
         document.getElementById('add-id').value = "";
     }
 
-    async function sendMsg() {
-        const txt = document.getElementById('msg-input').value;
+    async function sendMsg(customTxt = null) {
+        const txt = customTxt || document.getElementById('msg-input').value;
         if(!txt || !ACTIVE_CHAT) return;
         const msg = { sid: MY_ID, sender: MY_NICK, ava: MY_AVA, text: txt, ts: Date.now() };
         let room = (MY_TYPE === 'user') ? [MY_ID, ACTIVE_CHAT].sort().join("_") : ACTIVE_CHAT;
         await fetch(`${BASE}/chats/${room}.json`, { method:'POST', body: JSON.stringify(msg) });
-        if(MY_TYPE === 'user') {
+        if(MY_TYPE === 'user' && !customTxt) {
             let u = await (await fetch(`${BASE}/users/${ACTIVE_CHAT}.json`)).json();
             if(u?.email) emailjs.send(EJS_SERVICE, EJS_TEMPLATE, { name: MY_NICK, message: txt, to_email: u.email });
         }
@@ -220,7 +245,7 @@
                 await fetch(`${BASE}/users/${MY_ID}.json`, { method:'PUT', body: JSON.stringify(user) });
             }
             MY_NICK = user.nick; MY_AVA = user.ava || DEF_AVA;
-            localStorage.setItem('my_diesel_id', MY_ID); // Сохраняем ID
+            localStorage.setItem('my_diesel_id', MY_ID); 
             document.getElementById('auth-screen').style.display = 'none';
             updateUI(); setInterval(sync, 2000);
         }
@@ -266,8 +291,14 @@
                     Object.keys(mData).forEach(mid => {
                         let m = mData[mid], b = document.createElement('div');
                         b.className = `bubble ${m.sid === MY_ID ? 'me' : 'other'}`;
+                        
+                        let content = m.text;
+                        // Рендеринг фото и видео
+                        if(content.startsWith('[img]')) content = `<img src="${content.replace('[img]', '')}" onclick="window.open(this.src)">`;
+                        else if(content.startsWith('[vid]')) content = `<video controls src="${content.replace('[vid]', '')}"></video>`;
+
                         let comms = m.comments ? Object.values(m.comments).map(c => `<div class="comment"><b>${c.u}:</b> ${c.t}</div>`).join('') : "";
-                        b.innerHTML = `<small style="color:var(--accent)">${m.sender}</small><div>${m.text}</div>${comms}<span class="comm-btn" onclick="addComment('${mid}')">Обсудить</span>`;
+                        b.innerHTML = `<small style="color:var(--accent)">${m.sender}</small><div>${content}</div>${comms}<span class="comm-btn" onclick="addComment('${mid}')">Обсудить</span>`;
                         box.appendChild(b);
                     });
                     box.scrollTop = box.scrollHeight;
