@@ -11,10 +11,8 @@
         
         /* Aero Style Classes */
         body.aero-mode { background: url('fon.png') no-repeat center center fixed; background-size: cover; }
-        /* Фон сделан светлее (0.3 вместо 0.5) */
         body.aero-mode .sidebar, body.aero-mode .main, body.aero-mode #auth-screen { background: rgba(0, 0, 0, 0.3) !important; backdrop-filter: blur(10px); }
         body.aero-mode input { background: url('Button3.png') no-repeat; background-size: 100% 100%; border: none; color: white; }
-        /* Глянцевый эффект для кнопок через наложение градиента */
         body.aero-mode button { 
             background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%), url('Button3.png') no-repeat; 
             background-size: 100% 100%; 
@@ -22,7 +20,6 @@
             border: none; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
-        /* Увеличенная кнопка отправить */
         body.aero-mode #send-btn { 
             background: url('Button1.png') no-repeat; 
             background-size: contain; 
@@ -124,6 +121,23 @@
 
     emailjs.init(EJS_PUBLIC);
 
+    // Авто-вход при загрузке
+    async function checkAuth() {
+        const savedId = localStorage.getItem('my_diesel_id');
+        if (savedId) {
+            let user = await (await fetch(`${BASE}/users/${savedId}.json`)).json();
+            if (user) {
+                MY_ID = savedId;
+                MY_NICK = user.nick;
+                MY_AVA = user.ava || DEF_AVA;
+                document.getElementById('auth-screen').style.display = 'none';
+                updateUI();
+                setInterval(sync, 2000);
+            }
+        }
+    }
+    checkAuth();
+
     function toggleAero() {
         document.body.classList.toggle('aero-mode');
         localStorage.setItem('aero', document.body.classList.contains('aero-mode'));
@@ -206,6 +220,7 @@
                 await fetch(`${BASE}/users/${MY_ID}.json`, { method:'PUT', body: JSON.stringify(user) });
             }
             MY_NICK = user.nick; MY_AVA = user.ava || DEF_AVA;
+            localStorage.setItem('my_diesel_id', MY_ID); // Сохраняем ID
             document.getElementById('auth-screen').style.display = 'none';
             updateUI(); setInterval(sync, 2000);
         }
@@ -264,5 +279,3 @@
 </script>
 </body>
 </html>
-
-
