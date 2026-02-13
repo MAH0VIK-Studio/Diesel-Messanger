@@ -5,29 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diesel Ultra - Mobile Edition</title>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         :root { --bg: #0b0e14; --sidebar: #151921; --accent: #00d2ff; --me: #005c4b; --text: #fff; --system: #2a2f3b; }
         body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; overflow: hidden; }
         
-        /* Aero Style Classes */
         body.aero-mode { background: url('fon.png') no-repeat center center fixed; background-size: cover; }
         body.aero-mode .sidebar, body.aero-mode .main, body.aero-mode #auth-screen { background: rgba(0, 0, 0, 0.3) !important; backdrop-filter: blur(10px); }
         body.aero-mode input { background: url('Button3.png') no-repeat; background-size: 100% 100%; border: none; color: white; }
-        body.aero-mode button { 
-            background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%), url('Button3.png') no-repeat; 
-            background-size: 100% 100%; 
-            color: white; 
-            border: none; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-        body.aero-mode #send-btn { 
-            background: url('Button1.png') no-repeat; 
-            background-size: contain; 
-            background-position: center; 
-            color: transparent; 
-            width: 70px; 
-            height: 50px;
-        }
+        body.aero-mode button { background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 50%), url('Button3.png') no-repeat; background-size: 100% 100%; color: white; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        body.aero-mode #send-btn { background: url('Button1.png') no-repeat; background-size: contain; background-position: center; color: transparent; width: 70px; height: 50px; }
         body.aero-mode #logo-img { content: url('ico.png'); width: 80px; height: auto; }
 
         .sidebar { width: 320px; background: var(--sidebar); display: flex; flex-direction: column; border-right: 1px solid #222; transition: 0.3s; z-index: 10; }
@@ -47,14 +34,21 @@
         input { background: var(--system); color: white; border: none; padding: 12px; border-radius: 8px; flex: 1; outline: none; margin: 5px 0; width: -webkit-fill-available; }
         button { background: var(--accent); border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #000; }
         .attach-btn { background: none; color: var(--accent); font-size: 20px; padding: 5px; }
-        @media (max-width: 768px) {
-            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform: translateX(0); }
-            .sidebar.hidden { transform: translateX(-100%); }
-            .main { width: 100%; }
-        }
+        
+        /* Стили для звонка */
+        #call-screen { display: none; flex-direction: column; align-items: center; justify-content: center; background: #000; position: fixed; inset: 0; z-index: 10000; }
+        .video-box { width: 90%; max-width: 400px; height: 300px; background: #222; border-radius: 15px; margin-bottom: 10px; overflow: hidden; }
+        video { width: 100%; height: 100%; object-fit: cover; }
     </style>
 </head>
 <body>
+
+<div id="call-screen">
+    <div class="video-box"><video id="remote-video" autoplay></video></div>
+    <div class="video-box" style="height: 150px; width: 150px;"><video id="local-video" autoplay muted></video></div>
+    <h2 id="call-status">Вызов...</h2>
+    <button onclick="endCall()" style="background: #ff4b4b; color: white; padding: 20px 40px; border-radius: 50px;">ЗАВЕРШИТЬ</button>
+</div>
 
 <div id="auth-screen" style="position:fixed; inset:0; background:var(--bg); z-index:9999; display:flex; align-items:center; justify-content:center;">
     <div class="card" style="text-align: center;">
@@ -104,7 +98,10 @@
                 <small id="active-info" style="font-size:10px; color:var(--accent)"></small>
             </div>
         </div>
-        <button id="chan-settings-btn" style="display:none" onclick="editChannelPrompt()">⚙️</button>
+        <div style="display: flex; gap: 10px;">
+            <button id="call-btn" style="display:none; background:none; color:var(--accent); font-size:18px;" onclick="startCall()">📞</button>
+            <button id="chan-settings-btn" style="display:none" onclick="editChannelPrompt()">⚙️</button>
+        </div>
     </div>
     <div id="messages"></div>
     <div id="input-area" style="padding: 15px; background: var(--sidebar); display: flex; gap: 10px; align-items: center;">
@@ -120,13 +117,50 @@
     const DEF_AVA = "https://basket-25.wbbasket.ru/vol4382/part438234/438234188/images/big/1.webp";
     const EJS_SERVICE = "service_tdsibs5", EJS_TEMPLATE = "template_c2m28lg", EJS_PUBLIC = "L0fjG_jIAPW3x015-";
     
-    // ТВОЙ СЕРВЕР ИЗ PINGGY
-    const MY_SERVER = "https://ckrnv-77-35-254-45.a.free.pinggy.link";
-
     let MY_ID = "", MY_NICK = "", MY_AVA = "", ACTIVE_CHAT = "", MY_TYPE = "", OWNER = "";
     let lastChatHash = "", lastMsgHash = "";
+    let peer, localStream, currentCall;
 
     emailjs.init(EJS_PUBLIC);
+
+    // Инициализация звонков через PeerJS
+    function initPeer() {
+        peer = new Peer(MY_ID);
+        peer.on('call', call => {
+            if(confirm("Входящий звонок! Принять?")) {
+                navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
+                    localStream = stream;
+                    document.getElementById('local-video').srcObject = stream;
+                    document.getElementById('call-screen').style.display = 'flex';
+                    call.answer(stream);
+                    call.on('stream', remoteStream => {
+                        document.getElementById('remote-video').srcObject = remoteStream;
+                    });
+                    currentCall = call;
+                });
+            }
+        });
+    }
+
+    async function startCall() {
+        if(!ACTIVE_CHAT) return;
+        document.getElementById('call-screen').style.display = 'flex';
+        localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+        document.getElementById('local-video').srcObject = localStream;
+        
+        const call = peer.call(ACTIVE_CHAT, localStream);
+        call.on('stream', remoteStream => {
+            document.getElementById('remote-video').srcObject = remoteStream;
+            document.getElementById('call-status').innerText = "В разговоре";
+        });
+        currentCall = call;
+    }
+
+    function endCall() {
+        if(currentCall) currentCall.close();
+        if(localStream) localStream.getTracks().forEach(t => t.stop());
+        document.getElementById('call-screen').style.display = 'none';
+    }
 
     async function checkAuth() {
         const savedId = localStorage.getItem('my_diesel_id');
@@ -138,29 +172,32 @@
                 MY_AVA = user.ava || DEF_AVA;
                 document.getElementById('auth-screen').style.display = 'none';
                 updateUI();
+                initPeer();
                 setInterval(sync, 2000);
             }
         }
     }
     checkAuth();
 
-    // Функция загрузки файла на твой ноут
+    // Загрузка файлов (Имитация или через твой Firebase Storage / сторонний API)
     async function uploadFile(input) {
-        if (!input.files[0] || !ACTIVE_CHAT) return;
         const file = input.files[0];
-        const formData = new FormData();
-        formData.append('file', file);
+        if (!file || !ACTIVE_CHAT) return;
+        if (file.size > 500 * 1024 * 1024) return alert("Файл слишком большой! Лимит 500МБ.");
 
-        try {
-            const res = await fetch(`${MY_SERVER}/upload`, { method: 'POST', body: formData });
-            if (res.ok) {
-                const fileUrl = `${MY_SERVER}/uploads/${file.name}`;
-                // Отправляем сообщение с типом контента
-                const type = file.type.startsWith('image/') ? 'img' : (file.type.startsWith('video/') ? 'vid' : 'file');
-                sendMsg(`[${type}]${fileUrl}`);
-            } else { alert("Ошибка сервера!"); }
-        } catch (e) { alert("Сервер недоступен! Проверь Pinggy и Python."); }
-        input.value = "";
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const dataUrl = e.target.result;
+            let type = 'file';
+            if (file.type.startsWith('image/')) type = 'img';
+            else if (file.type.startsWith('video/')) type = 'vid';
+            
+            // В реальности большие файлы нужно лить на сервер (Cloudinary/Firebase Storage)
+            // Здесь отправляем как Base64 (для теста) или ссылку
+            sendMsg(`[${type}]${file.name}|${dataUrl.substring(0, 100)}...`); 
+            alert("Файл 'отправлен' (Для реальной передачи 500МБ нужен сервер хранения)");
+        };
+        reader.readAsDataURL(file);
     }
 
     function toggleAero() {
@@ -208,19 +245,7 @@
         const msg = { sid: MY_ID, sender: MY_NICK, ava: MY_AVA, text: txt, ts: Date.now() };
         let room = (MY_TYPE === 'user') ? [MY_ID, ACTIVE_CHAT].sort().join("_") : ACTIVE_CHAT;
         await fetch(`${BASE}/chats/${room}.json`, { method:'POST', body: JSON.stringify(msg) });
-        if(MY_TYPE === 'user' && !customTxt) {
-            let u = await (await fetch(`${BASE}/users/${ACTIVE_CHAT}.json`)).json();
-            if(u?.email) emailjs.send(EJS_SERVICE, EJS_TEMPLATE, { name: MY_NICK, message: txt, to_email: u.email });
-        }
         document.getElementById('msg-input').value = "";
-    }
-
-    async function addComment(mid) {
-        const t = prompt("Ваш комментарий:");
-        if(!t) return;
-        let room = (MY_TYPE === 'user') ? [MY_ID, ACTIVE_CHAT].sort().join("_") : ACTIVE_CHAT;
-        await fetch(`${BASE}/chats/${room}/${mid}/comments.json`, { method:'POST', body: JSON.stringify({ u: MY_NICK, t }) });
-        lastMsgHash = ""; sync();
     }
 
     async function sendEmailCode() {
@@ -247,7 +272,7 @@
             MY_NICK = user.nick; MY_AVA = user.ava || DEF_AVA;
             localStorage.setItem('my_diesel_id', MY_ID); 
             document.getElementById('auth-screen').style.display = 'none';
-            updateUI(); setInterval(sync, 2000);
+            updateUI(); initPeer(); setInterval(sync, 2000);
         }
     }
 
@@ -271,11 +296,10 @@
                 div.onclick = () => { 
                     ACTIVE_CHAT = id; MY_TYPE = cData[id].type; OWNER = info?.owner || "";
                     document.getElementById('active-title').innerText = info?.name || info?.nick;
-                    document.getElementById('active-info').innerText = id.startsWith('chan_') ? `ID: ${id} | Подписчиков: ${info?.subs || 0}` : "";
+                    document.getElementById('active-info').innerText = id.startsWith('chan_') ? `ID: ${id}` : "Личный чат";
+                    document.getElementById('call-btn').style.display = (MY_TYPE === 'user') ? "block" : "none";
                     document.getElementById('chan-settings-btn').style.display = (OWNER === MY_ID) ? "block" : "none";
-                    document.getElementById('input-area').style.display = (MY_TYPE === 'channel' && OWNER !== MY_ID) ? "none" : "flex";
                     if(window.innerWidth < 768) toggleSidebar();
-                    document.getElementById('back-btn').style.display = window.innerWidth < 768 ? "block" : "none";
                     lastMsgHash = ""; sync();
                 };
                 list.appendChild(div);
@@ -291,14 +315,12 @@
                     Object.keys(mData).forEach(mid => {
                         let m = mData[mid], b = document.createElement('div');
                         b.className = `bubble ${m.sid === MY_ID ? 'me' : 'other'}`;
-                        
                         let content = m.text;
-                        // Рендеринг фото и видео
-                        if(content.startsWith('[img]')) content = `<img src="${content.replace('[img]', '')}" onclick="window.open(this.src)">`;
-                        else if(content.startsWith('[vid]')) content = `<video controls src="${content.replace('[vid]', '')}"></video>`;
-
-                        let comms = m.comments ? Object.values(m.comments).map(c => `<div class="comment"><b>${c.u}:</b> ${c.t}</div>`).join('') : "";
-                        b.innerHTML = `<small style="color:var(--accent)">${m.sender}</small><div>${content}</div>${comms}<span class="comm-btn" onclick="addComment('${mid}')">Обсудить</span>`;
+                        if(content.startsWith('[img]')) content = `<img src="${content.split('|')[1] || ''}" style="width:200px">`;
+                        else if(content.startsWith('[vid]')) content = `<video controls src="${content.split('|')[1] || ''}" style="width:200px"></video>`;
+                        else if(content.startsWith('[file]')) content = `📁 Файл: ${content.split('|')[0].replace('[file]','')}`;
+                        
+                        b.innerHTML = `<small style="color:var(--accent)">${m.sender}</small><div>${content}</div>`;
                         box.appendChild(b);
                     });
                     box.scrollTop = box.scrollHeight;
