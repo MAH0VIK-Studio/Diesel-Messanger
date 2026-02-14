@@ -8,7 +8,6 @@
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
         :root { --bg: #0b0e14; --sidebar: #151921; --accent: #00d2ff; --me: #005c4b; --text: #fff; --system: #2a2f3b; --danger: #ff4b4b; }
-        * { box-sizing: border-box; }
         body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; overflow: hidden; }
         
         body.aero-mode { background: url('fon.png') no-repeat center center fixed; background-size: cover; }
@@ -18,18 +17,11 @@
         body.aero-mode #send-btn { background: url('Button1.png') no-repeat; background-size: contain; background-position: center; color: transparent; width: 70px; height: 50px; }
         body.aero-mode #logo-img { content: url('ico.png'); width: 80px; height: auto; }
 
-        .sidebar { width: 320px; background: var(--sidebar); display: flex; flex-direction: column; border-right: 1px solid #222; transition: transform 0.3s ease; z-index: 1000; }
+        .sidebar { width: 320px; background: var(--sidebar); display: flex; flex-direction: column; border-right: 1px solid #222; transition: 0.3s; z-index: 10; }
         .main { flex: 1; display: flex; flex-direction: column; position: relative; background: #080a0f; width: 100%; }
-        
-        @media (max-width: 768px) {
-            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transform: translateX(-100%); }
-            .sidebar.active { transform: translateX(0); }
-            #back-btn { display: block !important; }
-        }
-
         .avatar { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; background: #333; flex-shrink: 0; }
-        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); padding: 20px; }
-        .card { background: var(--sidebar); padding: 20px; border-radius: 20px; width: 100%; max-width: 400px; border: 1px solid var(--accent); box-shadow: 0 0 20px rgba(0, 210, 255, 0.2); }
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+        .card { background: var(--sidebar); padding: 20px; border-radius: 20px; width: 300px; border: 1px solid var(--accent); box-shadow: 0 0 20px rgba(0, 210, 255, 0.2); }
         
         #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
         .bubble { max-width: 85%; padding: 10px; border-radius: 15px; font-size: 14px; position: relative; word-wrap: break-word; cursor: pointer; transition: transform 0.1s; }
@@ -39,10 +31,11 @@
         
         .chat-item { padding: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid #222; position: relative; }
         .chat-item.active { background: #2a2f3b; border-left: 4px solid var(--accent); }
-        .chat-item .del-btn { position: absolute; right: 10px; color: var(--danger); font-size: 22px; padding: 5px; }
+        .chat-item .del-btn { position: absolute; right: 10px; color: var(--danger); display: none; font-size: 18px; }
+        .chat-item:hover .del-btn { display: block; }
 
-        input { background: var(--system); color: white; border: 1px solid #444; padding: 12px; border-radius: 8px; outline: none; margin: 5px 0; width: 100%; font-size: 16px; }
-        button { background: var(--accent); border: none; padding: 12px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #000; transition: 0.2s; font-size: 14px; }
+        input { background: var(--system); color: white; border: 1px solid #444; padding: 12px; border-radius: 8px; flex: 1; outline: none; margin: 5px 0; width: -webkit-fill-available; font-size: 16px; }
+        button { background: var(--accent); border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #000; transition: 0.2s; font-size: 14px; }
         button:active { opacity: 0.7; }
 
         .action-menu { display: flex; flex-direction: column; gap: 10px; width: 100%; }
@@ -50,16 +43,24 @@
         .btn-edit { background: var(--accent); color: #000; }
         .btn-del { background: var(--danger); color: #fff; }
 
-        .ide-container { width: 100%; height: 100%; background: #1e1e1e; display: flex; flex-direction: column; overflow: hidden; }
-        .ide-header { padding: 10px; background: #252526; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; flex-wrap: wrap; gap: 5px; }
+        .ide-container { width: 95%; height: 95%; background: #1e1e1e; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--accent); }
+        .ide-header { padding: 10px; background: #252526; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
         #bot-code-editor { flex: 1; background: #1e1e1e; color: #d4d4d4; font-family: 'Consolas', monospace; padding: 15px; border: none; resize: none; outline: none; font-size: 14px; }
         
         #call-screen { display: none; flex-direction: column; align-items: center; justify-content: center; background: #000; position: fixed; inset: 0; z-index: 10000; }
-        .video-box { width: 90%; max-width: 400px; height: 45vh; background: #222; border-radius: 15px; margin-bottom: 10px; overflow: hidden; }
+        .video-box { width: 90%; max-width: 400px; height: 300px; background: #222; border-radius: 15px; margin-bottom: 10px; overflow: hidden; }
         video { width: 100%; height: 100%; object-fit: cover; }
 
         .comment-trigger { font-size: 10px; color: var(--accent); margin-top: 5px; display: block; text-decoration: underline; }
         .comments-overlay { position: absolute; right: 0; top: 0; width: 100%; height: 100%; background: var(--bg); z-index: 100; display: none; flex-direction: column; }
+
+        @media (max-width: 768px) {
+            .sidebar { position: absolute; left: -320px; height: 100%; width: 280px; }
+            .sidebar.active { left: 0; }
+            #back-btn { display: block !important; }
+            .ide-container { width: 100%; height: 100%; border-radius: 0; }
+            .bubble { max-width: 90%; }
+        }
     </style>
 </head>
 <body>
@@ -77,35 +78,35 @@
 </div>
 
 <div id="call-screen">
-    <div class="video-box"><video id="remote-video" autoplay playsinline></video></div>
-    <div class="video-box" style="height: 120px; width: 120px; position:absolute; bottom:100px; right:20px; border:2px solid var(--accent);"><video id="local-video" autoplay muted playsinline></video></div>
+    <div class="video-box"><video id="remote-video" autoplay></video></div>
+    <div class="video-box" style="height: 150px; width: 150px;"><video id="local-video" autoplay muted></video></div>
     <h2 id="call-status">Вызов...</h2>
-    <button onclick="endCall()" style="background: #ff4b4b; color: white; padding: 15px 30px; border-radius: 50px;">ЗАВЕРШИТЬ</button>
+    <button onclick="endCall()" style="background: #ff4b4b; color: white; padding: 20px 40px; border-radius: 50px;">ЗАВЕРШИТЬ</button>
 </div>
 
-<div id="ide-modal" class="overlay" style="padding:0">
+<div id="ide-modal" class="overlay">
     <div class="ide-container">
         <div class="ide-header">
-            <b style="font-size:12px">Diesel Bot IDE</b>
-            <div style="display:flex; gap:5px">
-                <button onclick="saveAndRunBot()" style="background: #4caf50; color: white; padding: 5px 10px;">SAVE</button>
-                <button onclick="closeModals()" style="background: #444; color: white; padding: 5px 10px;">EXIT</button>
+            <b>Diesel Bot IDE</b>
+            <div>
+                <button onclick="saveAndRunBot()" style="background: #4caf50; color: white; padding: 5px 8px; font-size: 12px;">SAVE</button>
+                <button onclick="closeModals()" style="background: #444; color: white; margin-left: 5px; padding: 5px 8px; font-size: 12px;">X</button>
             </div>
         </div>
         <textarea id="bot-code-editor" spellcheck="false"></textarea>
     </div>
 </div>
 
-<div id="auth-screen" style="position:fixed; inset:0; background:var(--bg); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;">
+<div id="auth-screen" style="position:fixed; inset:0; background:var(--bg); z-index:9999; display:flex; align-items:center; justify-content:center;">
     <div class="card" style="text-align: center;">
-        <h1 id="logo-img" style="color: var(--accent); letter-spacing: 5px; margin-bottom:20px;">DIESEL</h1>
+        <h1 id="logo-img" style="color: var(--accent); letter-spacing: 5px;">DIESEL</h1>
         <div id="step-email">
-            <input type="email" id="email" placeholder="Email">
-            <button onclick="sendEmailCode()" style="width: 100%; margin-top:10px;">ВОЙТИ</button>
+            <input type="email" id="email" placeholder="Email"><br>
+            <button onclick="sendEmailCode()" style="width: 100%">ВОЙТИ</button>
         </div>
         <div id="step-code" style="display:none">
-            <input type="text" id="auth-code" placeholder="Код 0000" style="text-align:center;">
-            <button onclick="verifyCode()" style="width: 100%; margin-top:10px;">ПОДТВЕРДИТЬ</button>
+            <input type="text" id="auth-code" placeholder="Код 0000" style="text-align:center;"><br>
+            <button onclick="verifyCode()" style="width: 100%">ПОДТВЕРДИТЬ</button>
         </div>
     </div>
 </div>
@@ -116,7 +117,7 @@
         <p style="font-size: 11px; color: var(--accent)">ID: <span id="display-id"></span></p>
         <input type="text" id="edit-nick" placeholder="Никнейм">
         <input type="text" id="edit-ava" placeholder="URL аватарки">
-        <button onclick="saveProfile()" style="width:100%; margin-top:10px;">СОХРАНИТЬ</button>
+        <button onclick="saveProfile()" style="width:100%">СОХРАНИТЬ</button>
         <button onclick="toggleAero()" style="width:100%; margin-top:10px; background: linear-gradient(45deg, #00d2ff, #3a7bd5); color:white">Aero Style</button>
         <button onclick="closeModals()" style="width:100%; margin-top:10px; background:#444; color:white">ЗАКРЫТЬ</button>
     </div>
@@ -128,34 +129,32 @@
         <b id="my-nick-display">...</b>
     </div>
     <div id="chat-list" style="flex: 1; overflow-y: auto;"></div>
-    <div style="padding: 10px; border-top: 1px solid #222; background: var(--sidebar);">
+    <div style="padding: 10px; border-top: 1px solid #222;">
         <button onclick="createChannelPrompt()" style="width: 100%; margin-bottom: 8px; background:#222; color:var(--accent)">+ КАНАЛ</button>
-        <button onclick="openIDE()" style="width: 100%; margin-bottom: 8px; background: var(--accent); color:#000">IDE (БОТ)</button>
-        <div style="display:flex; gap:5px;">
-            <input type="text" id="add-id" placeholder="ID..." style="margin:0">
-            <button onclick="addFriend()">+</button>
-        </div>
+        <button onclick="openIDE()" style="width: 100%; margin-bottom: 8px; background: var(--accent); color:#000">СОЗДАТЬ БОТА (IDE)</button>
+        <input type="text" id="add-id" placeholder="ID друга/канала/бота...">
+        <button onclick="addFriend()" style="width: 100%">ДОБАВИТЬ</button>
     </div>
 </div>
 
 <div class="main">
     <div id="comments-view" class="comments-overlay">
         <div style="padding: 15px; background: var(--sidebar); display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #333;">
-            <button onclick="closeComments()" style="background:none; color:var(--accent); font-size:20px;">←</button>
+            <button onclick="closeComments()" style="background:none; color:var(--accent)">← Назад</button>
             <b id="comment-parent-title">Комментарии</b>
         </div>
         <div id="comment-messages" style="flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:10px;"></div>
-        <div style="padding:15px; background:var(--sidebar); display:flex; gap:10px; align-items:center;">
-            <input type="text" id="comment-input" placeholder="Текст..." style="margin:0">
+        <div style="padding:15px; background:var(--sidebar); display:flex; gap:10px;">
+            <input type="text" id="comment-input" placeholder="Написать комментарий...">
             <button onclick="sendComment()">➤</button>
         </div>
     </div>
 
-    <div id="chat-header" style="padding: 10px 15px; background: var(--sidebar); border-bottom: 1px solid #222; display:flex; justify-content:space-between; align-items:center; min-height:60px;">
-        <div style="display:flex; align-items:center; gap:10px; cursor:pointer; overflow:hidden;" onclick="editCurrentChannel()">
-            <button onclick="toggleSidebar(event)" id="back-btn" style="display:none; padding:5px 12px; margin-right:5px; background:#333; color:white;">≡</button>
-            <div style="display:flex; flex-direction:column; overflow:hidden;">
-                <b id="active-title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Diesel Chat</b>
+    <div id="chat-header" style="padding: 15px; background: var(--sidebar); border-bottom: 1px solid #222; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:10px; cursor:pointer" onclick="editCurrentChannel()">
+            <button onclick="toggleSidebar()" id="back-btn" style="display:none; padding:5px 10px; background: none; border: 1px solid var(--accent); color: var(--accent); border-radius: 5px;">☰</button>
+            <div style="display:flex; flex-direction:column">
+                <b id="active-title">Выберите чат</b>
                 <small id="active-info" style="font-size:10px; color:var(--accent)"></small>
             </div>
         </div>
@@ -163,14 +162,12 @@
             <button id="call-btn" style="display:none; background:none; color:var(--accent); font-size:18px;" onclick="startCall()">📞</button>
         </div>
     </div>
-
     <div id="messages"></div>
-
-    <div id="input-area" style="padding: 10px; background: var(--sidebar); display: flex; gap: 8px; align-items: center;">
-        <button class="attach-btn" style="background:none; color:var(--accent); font-size:22px; padding:0 5px;" onclick="document.getElementById('file-input').click()">📎</button>
+    <div id="input-area" style="padding: 15px; background: var(--sidebar); display: flex; gap: 10px; align-items: center;">
+        <button class="attach-btn" style="background:none; color:var(--accent); font-size:20px;" onclick="document.getElementById('file-input').click()">📎</button>
         <input type="file" id="file-input" style="display:none" onchange="uploadFile(this)">
-        <input type="text" id="msg-input" placeholder="Сообщение..." style="margin:0">
-        <button id="send-btn" onclick="sendMsg()" style="padding:10px 18px;">➤</button>
+        <input type="text" id="msg-input" placeholder="Сообщение...">
+        <button id="send-btn" onclick="sendMsg()">➤</button>
     </div>
 </div>
 
@@ -184,11 +181,6 @@
     let MY_ID = "", MY_NICK = "", MY_AVA = "", ACTIVE_CHAT = "", MY_TYPE = "", CURRENT_BOT_ID = "";
     let lastChatHash = "", lastMsgHash = "", lastCommentHash = "";
     let peer, localStream, currentCall, ACTIVE_COMMENT_ID = "";
-
-    function toggleSidebar(e) {
-        if(e) e.stopPropagation();
-        document.getElementById('sidebar').classList.toggle('active');
-    }
 
     function customUI({ title, desc, type, value, onConfirm }) {
         const modal = document.getElementById('ui-modal');
@@ -211,20 +203,17 @@
             confirmBtn.style.display = 'none';
             const wrap = document.createElement('div');
             wrap.className = 'action-menu';
+            const editBtn = document.createElement('div');
+            editBtn.className = 'action-btn btn-edit'; editBtn.innerText = 'РЕДАКТИРОВАТЬ';
+            editBtn.onclick = () => { closeModals(); onConfirm('edit'); };
+            const delBtn = document.createElement('div');
+            delBtn.className = 'action-btn btn-del'; delBtn.innerText = 'УДАЛИТЬ СООБЩЕНИЕ';
+            delBtn.onclick = () => { closeModals(); onConfirm('del'); };
+            const delChatBtn = document.createElement('div');
+            delChatBtn.className = 'action-btn btn-del'; delChatBtn.innerText = 'УДАЛИТЬ ВЕСЬ ЧАТ';
+            delChatBtn.onclick = () => { closeModals(); onConfirm('del_chat'); };
             
-            const acts = [
-                {t: 'РЕДАКТИРОВАТЬ', c: 'btn-edit', a: 'edit'},
-                {t: 'УДАЛИТЬ СООБЩЕНИЕ', c: 'btn-del', a: 'del'},
-                {t: 'УДАЛИТЬ ВЕСЬ ЧАТ', c: 'btn-del', a: 'del_chat'}
-            ];
-
-            acts.forEach(act => {
-                const b = document.createElement('div');
-                b.className = 'action-btn ' + act.c;
-                b.innerText = act.t;
-                b.onclick = () => { closeModals(); onConfirm(act.a); };
-                wrap.appendChild(b);
-            });
+            wrap.appendChild(editBtn); wrap.appendChild(delBtn); wrap.appendChild(delChatBtn);
             content.appendChild(wrap);
         }
 
@@ -243,14 +232,14 @@
 
         customUI({
             title: "Настройки канала",
-            desc: "Название:",
+            desc: "Введите новое название:",
             type: 'input',
             value: info.name,
             onConfirm: async (newName) => {
                 if(!newName) return;
                 customUI({
-                    title: "Аватарка",
-                    desc: "URL:",
+                    title: "Аватарка канала",
+                    desc: "URL изображения:",
                     type: 'input',
                     value: info.ava,
                     onConfirm: async (newAva) => {
@@ -290,16 +279,39 @@
         if(!ACTIVE_COMMENT_ID) return;
         let cData = await (await fetch(`${BASE}/comments/${ACTIVE_COMMENT_ID}.json`)).json();
         if(JSON.stringify(cData) !== lastCommentHash) {
+            const isNew = lastCommentHash !== "" && cData;
             lastCommentHash = JSON.stringify(cData);
             const box = document.getElementById('comment-messages'); box.innerHTML = "";
             if(cData) {
-                Object.keys(cData).forEach(cid => {
+                const keys = Object.keys(cData);
+                keys.forEach(cid => {
                     let m = cData[cid], b = document.createElement('div');
                     b.className = `bubble ${m.sid === MY_ID ? 'me' : 'other'}`;
                     b.innerHTML = `<small style="color:var(--accent)">${m.sender}</small><div>${m.text}</div>`;
                     box.appendChild(b);
                 });
                 box.scrollTop = box.scrollHeight;
+                if(isNew) {
+                    const lastC = cData[keys[keys.length-1]];
+                    checkBotsForResponse(lastC, ACTIVE_COMMENT_ID);
+                }
+            }
+        }
+    }
+
+    async function checkBotsForResponse(msg, contextId) {
+        let cData = await (await fetch(`${BASE}/contacts/${MY_ID}.json`)).json();
+        for(let id in cData) {
+            if(cData[id].type === 'bot' && msg.sid !== id) {
+                let botInfo = await (await fetch(`${BASE}/users/${id}.json`)).json();
+                if(botInfo && botInfo.code) {
+                    const sandbox = document.getElementById('bot-sandbox');
+                    const botScript = `const BotAPI = { 
+                        onMessage: (callback) => { callback(${JSON.stringify(msg)}); }, 
+                        sendMessage: (txt) => { window.parent.postMessage({ type: 'bot_reply', targetId: "${contextId}", text: txt, bot: ${JSON.stringify(botInfo)} }, '*'); } 
+                    }; try { ${botInfo.code} } catch(e) {}`;
+                    sandbox.srcdoc = `<script>${botScript}<\/script>`;
+                }
             }
         }
     }
@@ -327,7 +339,7 @@
             });
         } else {
             CURRENT_BOT_ID = "";
-            document.getElementById('bot-code-editor').value = "BotAPI.onMessage((msg) => {\n    if(msg.text === 'Привет') {\n        BotAPI.sendMessage('Привет! Я бот.');\n    }\n});";
+            document.getElementById('bot-code-editor').value = "BotAPI.onMessage((msg) => {\n    if(msg.text === \"Привет\") {\n        BotAPI.sendMessage(\"Привет! Я бот Diesel.\");\n    }\n});";
             document.getElementById('ide-modal').style.display = 'flex';
         }
     }
@@ -355,7 +367,7 @@
         peer.on('call', call => {
             customUI({
                 title: "Входящий вызов",
-                desc: "Принять?",
+                desc: "Принять звонок?",
                 onConfirm: () => {
                     navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
                         localStream = stream;
@@ -414,6 +426,10 @@
     }
     if(localStorage.getItem('aero') === 'true') document.body.classList.add('aero-mode');
 
+    function toggleSidebar() { 
+        document.getElementById('sidebar').classList.toggle('active'); 
+    }
+
     function openProfile() {
         document.getElementById('display-id').innerText = MY_ID;
         document.getElementById('edit-nick').value = MY_NICK;
@@ -448,7 +464,8 @@
 
     async function handleMsgAction(mid, text, sid) {
         customUI({
-            title: "Действие",
+            title: "Управление чатом",
+            desc: "Выберите действие:",
             type: 'actions',
             onConfirm: async (action) => {
                 let room = (MY_TYPE !== 'channel') ? [MY_ID, ACTIVE_CHAT].sort().join("_") : ACTIVE_CHAT;
@@ -456,7 +473,7 @@
                     await fetch(`${BASE}/chats/${room}/${mid}.json`, { method:'DELETE' });
                 } else if(action === 'edit' && sid === MY_ID) {
                     customUI({
-                        title: "Правка",
+                        title: "Редактирование",
                         type: 'input',
                         value: text,
                         onConfirm: async (newText) => {
@@ -475,7 +492,7 @@
     async function createChannelPrompt() {
         customUI({
             title: "Новый канал",
-            desc: "Название:",
+            desc: "Введите название канала:",
             type: 'input',
             onConfirm: async (name) => {
                 if(!name) return;
@@ -490,7 +507,7 @@
     async function deleteEntity(id, type) {
         customUI({
             title: "Удаление",
-            desc: "Удалить навсегда?",
+            desc: "Вы уверены, что хотите удалить это навсегда?",
             onConfirm: async () => {
                 const path = (type === 'channel') ? `entities/${id}` : `users/${id}`;
                 await fetch(`${BASE}/${path}.json`, { method:'DELETE' });
@@ -549,7 +566,7 @@
                 div.className = `chat-item ${ACTIVE_CHAT === id ? 'active' : ''}`;
                 div.innerHTML = `<img src="${info?.ava || DEF_AVA}" class="avatar"> <b>${info?.name || info?.nick || id}</b>`;
                 if(info?.owner === MY_ID) {
-                    let del = document.createElement('span'); del.className = 'del-btn'; del.innerHTML = '&times;';
+                    let del = document.createElement('span'); del.className = 'del-btn'; del.innerText = '×';
                     del.onclick = (e) => { e.stopPropagation(); deleteEntity(id, cData[id].type); };
                     div.appendChild(del);
                     if(cData[id].type === 'bot') div.ondblclick = () => openIDE(id);
@@ -577,8 +594,8 @@
                     keys.forEach(mid => {
                         let m = mData[mid], b = document.createElement('div');
                         b.className = `bubble ${m.sid === MY_ID ? 'me' : 'other'}`;
-                        let commentBtn = (MY_TYPE === 'channel') ? `<span class="comment-trigger" onclick="event.stopPropagation(); openComments('${mid}', '${m.text}')">Ответы</span>` : "";
-                        b.innerHTML = `<small style="color:var(--accent); font-size:10px;">${m.sender}</small><div>${m.text}</div>${commentBtn}`;
+                        let commentBtn = (MY_TYPE === 'channel') ? `<span class="comment-trigger" onclick="event.stopPropagation(); openComments('${mid}', '${m.text}')">Комментарии</span>` : "";
+                        b.innerHTML = `<small style="color:var(--accent)">${m.sender}</small><div>${m.text}</div>${commentBtn}`;
                         b.onclick = () => handleMsgAction(mid, m.text, m.sid);
                         box.appendChild(b);
                     });
